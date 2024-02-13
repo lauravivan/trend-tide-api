@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
 const getToken = (data) => {
-  const token = jwt.sign(data, "supersecret_dont_share", {
+  const token = jwt.sign(data, process.env.JWT_KEY, {
     expiresIn: "1h",
   });
 
