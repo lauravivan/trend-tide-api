@@ -85,13 +85,13 @@ const updatePost = async (req, res, next) => {
 
 const getPosts = async (req, res, next) => {
   try {
-    const posts = await Post.find();
-    console.log(posts);
+    const posts = await Post.find().populate({
+      path: "author",
+      select: "_id username",
+    });
 
     if (posts) {
-      res.status(201).json({
-        posts: posts,
-      });
+      res.status(201).json(posts);
     }
   } catch (error) {
     return next(error);
@@ -121,12 +121,10 @@ const getPost = async (req, res, next) => {
     const post = await Post.findById(
       pid,
       "title content image author creationDate editDate"
-    );
+    ).populate({ path: "author", select: "_id username" });
 
     if (post) {
-      res.status(201).json({
-        post: post,
-      });
+      res.status(201).json(post);
     }
   } catch (error) {
     return next(error);

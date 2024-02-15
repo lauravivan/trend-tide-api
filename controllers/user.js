@@ -247,9 +247,7 @@ const getAccountInfo = async (req, res, next) => {
     );
 
     if (user) {
-      res.status(201).json({
-        user: user,
-      });
+      res.status(201).json(user);
     }
   } catch (error) {
     return next(error);
