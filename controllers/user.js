@@ -1,150 +1,286 @@
 import User from "../model/user.js";
-import { verifyData } from "../util/validator.js";
-import {
-  findUserByEmail,
-  findUserByUserName,
-  updateUser,
-} from "../query/user.js";
 import bcrypt from "bcryptjs";
 import HttpError from "../model/http-error.js";
 import getToken from "../util/token.js";
+import fs from "fs";
+import path from "path";
 
 const signup = async (req, res, next) => {
-  const dataReceived = {
-    email: req.body.email,
-    username: req.body.username,
-    password: req.body.password,
-    passConfirmed: req.body.passwordConfirmed,
-  };
+  let dataReceived;
+  if (
+    "email" in req.body &&
+    "password" in req.body &&
+    "username" in req.body &&
+    "passwordConfirmed" in req.body
+  ) {
+    dataReceived = {
+      email: req.body.email,
+      username: req.body.username,
+      password: req.body.password,
+      passConfirmed: req.body.passwordConfirmed,
+    };
 
-  const resVerifyData = verifyData(dataReceived, "VALIDATE_SIGNUP");
-
-  if (!resVerifyData.state) {
-    const error = new HttpError(resVerifyData.message, 400);
-    return next(error);
-  }
-
-  const userNameReturn = await findUserByUserName(dataReceived.username);
-  const emailReturn = await findUserByEmail(dataReceived.email);
-
-  if (userNameReturn) {
-    const error = new HttpError(
-      "This username is already taken. Please try another one.",
-      409
-    );
-    return next(error);
-  }
-
-  if (emailReturn) {
-    const error = new HttpError(
-      "A user with this email already exists. Please try another one.",
-      409
-    );
-    return next(error);
-  }
-
-  try {
-    const hashedPass = await bcrypt.hash(dataReceived.password, 12);
-    const user = new User({
-      username: dataReceived.username,
-      email: dataReceived.email,
-      password: hashedPass,
-    });
-    const reqRes = await user.save();
-
-    if (reqRes._id) {
-      return res.status(201).json({
-        message: "Account created sucessfully!",
-      });
+    if (dataReceived.password !== dataReceived.passConfirmed) {
+      const error = new HttpError(
+        "Passwords don't match. Please, verify.",
+        409
+      );
+      return next(error);
     }
-  } catch (error) {
+
+    try {
+      const user = new User({
+        username: dataReceived.username,
+        email: dataReceived.email,
+        password: dataReceived.password,
+      });
+
+      const reqRes = await user.save();
+
+      if (reqRes._id) {
+        return res.status(201).json({
+          message: "Account created sucessfully!",
+        });
+      }
+    } catch (error) {
+      return next(error);
+    }
+  } else {
+    const error = new HttpError(
+      "Invalid request. Username, password, passwordConfirmed and email are required keys.",
+      409
+    );
+
     return next(error);
   }
 };
 
 const signin = async (req, res, next) => {
-  const dataReceived = {
-    email: req.body.email,
-    password: req.body.password,
-  };
+  let dataReceived;
+  if ("email" in req.body && "password" in req.body) {
+    dataReceived = {
+      email: req.body.email,
+      password: req.body.password,
+    };
 
-  try {
-    const user = await findUserByEmail(dataReceived.email);
+    try {
+      const user = await User.findOne({ email: dataReceived.email });
 
-    if (!user) {
-      const error = new HttpError(
-        "User doesn't exist. Please verify data.",
-        404
+      if (!user) {
+        const error = new HttpError(
+          "User doesn't exist. Please verify data.",
+          404
+        );
+        return next(error);
+      }
+
+      const isValidPassword = await bcrypt.compare(
+        dataReceived.password,
+        user.password
       );
+
+      if (!isValidPassword) {
+        const error = new HttpError(
+          "That's not your password. Please verify data.",
+          409
+        );
+        return next(error);
+      }
+
+      const token = getToken({ uid: user._id });
+
+      if (user && isValidPassword) {
+        return res.status(201).json({
+          message: "Nice! Logging in...",
+          token: token,
+          uid: user._id,
+        });
+      }
+    } catch (error) {
       return next(error);
     }
-
-    const isValidPassword = await bcrypt.compare(
-      dataReceived.password,
-      user.password
+  } else {
+    const error = new HttpError(
+      "Invalid request. Email and password keys required.",
+      409
     );
-
-    if (!isValidPassword) {
-      const error = new HttpError("Invalid password. Please verify data.", 409);
-      return next(error);
-    }
-
-    const token = getToken({ uid: user._id });
-
-    if (user && isValidPassword) {
-      return res.status(201).json({
-        message: "Nice! Logging in...",
-        token: token,
-        uid: user._id,
-      });
-    }
-  } catch (error) {
     return next(error);
   }
 };
 
 const recoverPass = async (req, res, next) => {
-  const receivedData = {
-    email: req.body.email,
-    password: req.body.password,
-    passConfirmed: req.body.passwordConfirmed,
-  };
+  let dataReceived;
+  if (
+    "email" in req.body &&
+    "password" in req.body &&
+    "passwordConfirmed" in req.body
+  ) {
+    dataReceived = {
+      email: req.body.email,
+      password: req.body.password,
+      passConfirmed: req.body.passwordConfirmed,
+    };
 
-  const isDataValid = verifyData(receivedData, "VALIDATE_RECOVER");
-
-  if (!isDataValid) {
-    const error = new HttpError(isDataValid.message, 400);
-    return next(error);
-  }
-
-  try {
-    const user = await findUserByEmail(receivedData.email);
-
-    if (!user) {
-      const error = new HttpError("Invalid email. Please verify data.");
+    if (
+      !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W).{9,40}$/.test(
+        dataReceived.password
+      )
+    ) {
+      const error = new HttpError("Invalid password. Please verify data", 409);
       return next(error);
     }
 
-    const hashedPass = await bcrypt.hash(receivedData.password, 12);
-
-    const updateSuccesfully = await updateUser(user, {
-      password: hashedPass,
-    });
-
-    if (updateSuccesfully.modifiedCount > 0) {
-      return res.status(201).json({
-        message: "Password update sucessfully!",
-      });
-    } else {
+    if (dataReceived.password !== dataReceived.passConfirmed) {
       const error = new HttpError(
-        "It wasn't possible to update the password",
+        "Passwords don't match. Please, verify.",
         409
       );
       return next(error);
+    }
+
+    try {
+      const hashedPass = await bcrypt.hash(dataReceived.password, 12);
+
+      const updateResult = await User.findOneAndUpdate(
+        { email: dataReceived.email },
+        {
+          password: hashedPass,
+        }
+      );
+
+      if (updateResult) {
+        return res.status(201).json({
+          message: "Password update sucessfully!",
+        });
+      } else {
+        const error = new HttpError(
+          "It wasn't possible to update the password. Verify if your email is correct.",
+          409
+        );
+        return next(error);
+      }
+    } catch (error) {
+      return next(error);
+    }
+  } else {
+    const error = new HttpError(
+      "Invalid request. Email, password and passwordConfirmed are required keys.",
+      409
+    );
+    return next(error);
+  }
+};
+
+const getPosts = async () => {};
+
+const getFavoritePosts = async () => {};
+
+const updateAccount = async (req, res, next) => {
+  const dataReceived = {};
+
+  if ("email" in req.body) {
+    dataReceived["email"] = req.body.email;
+  }
+
+  if ("username" in req.body) {
+    dataReceived["username"] = req.body.username;
+  }
+
+  if ("password" in req.body) {
+    dataReceived["password"] = req.body.password;
+  }
+
+  if (req.file) {
+    dataReceived["profileImage"] = req.file.filename;
+  }
+
+  try {
+    const userUpdated = await User.findOneAndUpdate(
+      { _id: req.params.uid },
+      dataReceived
+    );
+
+    if (userUpdated._id) {
+      res.status(201).json({
+        message: "User sucessfully updated!",
+      });
+    }
+  } catch (error) {
+    return next(error.message);
+  }
+};
+
+const deleteProfileImage = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.uid);
+
+    if (user) {
+      fs.unlink(path.join("uploads", "images", user.profileImage), (error) =>
+        console.log(error)
+      );
+    }
+
+    const updatedProfile = await User.findByIdAndUpdate(req.body.uid, {
+      profileImage: "",
+    });
+
+    if (updatedProfile) {
+      return res.status(201).json({
+        message: "Profile image successfully removed.",
+      });
+    }
+  } catch {
+    const error = new HttpError(
+      "An error ocurred and the image couldn't be deleted"
+    );
+    return next(error);
+  }
+};
+
+const getAccountInfo = async (req, res, next) => {
+  const uid = req.params.uid;
+
+  try {
+    const user = await User.findById(
+      uid,
+      "username email profileImage password"
+    );
+
+    if (user) {
+      res.status(201).json({
+        user: user,
+      });
     }
   } catch (error) {
     return next(error);
   }
 };
 
-export { signin, signup, recoverPass };
+const deleteAccount = async (req, res, next) => {
+  try {
+    const deletedAccount = await User.findByIdAndDelete(req.params.uid);
+
+    if (deletedAccount) {
+      res.status(201).json({
+        message: "Account deleted successfully",
+      });
+    }
+  } catch {
+    const error = new HttpError(
+      "An error ocurred. Account couldn't be deleted."
+    );
+    return next(error);
+  }
+};
+
+export {
+  signin,
+  signup,
+  recoverPass,
+  getPosts,
+  getFavoritePosts,
+  updateAccount,
+  deleteProfileImage,
+  getAccountInfo,
+  deleteAccount,
+};
