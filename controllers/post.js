@@ -90,8 +90,10 @@ const getPosts = async (req, res, next) => {
       select: "_id username",
     });
 
-    if (posts) {
+    if (posts.length > 0) {
       res.status(201).json(posts);
+    } else {
+      res.status(404).json();
     }
   } catch (error) {
     return next(error);
@@ -121,7 +123,7 @@ const getPost = async (req, res, next) => {
     const post = await Post.findById(
       pid,
       "title content image author creationDate editDate"
-    ).populate({ path: "author", select: "_id username" });
+    ).populate({ path: "author", select: "_id username profileImage" });
 
     if (post) {
       res.status(201).json(post);

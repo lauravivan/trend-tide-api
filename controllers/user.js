@@ -95,6 +95,10 @@ const signin = async (req, res, next) => {
           token: token,
           uid: user._id,
         });
+      } else {
+        return res.status(409).json({
+          message: "Something went wrong.",
+        });
       }
     } catch (error) {
       return next(error);
@@ -190,8 +194,8 @@ const updateAccount = async (req, res, next) => {
     dataReceived["password"] = req.body.password;
   }
 
-  if (req.file) {
-    dataReceived["profileImage"] = req.file.filename;
+  if ("image" in req.body) {
+    dataReceived["profileImage"] = req.body.image;
   }
 
   try {
@@ -204,6 +208,8 @@ const updateAccount = async (req, res, next) => {
       res.status(201).json({
         message: "User sucessfully updated!",
       });
+    } else {
+      res.status(409).json();
     }
   } catch (error) {
     return next(error.message);
@@ -247,7 +253,9 @@ const getAccountInfo = async (req, res, next) => {
     );
 
     if (user) {
-      res.status(201).json(user);
+      return res.status(201).json(user);
+    } else {
+      return res.status(404).json();
     }
   } catch (error) {
     return next(error);
