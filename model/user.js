@@ -39,13 +39,13 @@ const userSchema = new Schema({
   },
   posts: [
     {
-      type: ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Post",
     },
   ],
   favoritePosts: [
     {
-      type: ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Post",
     },
   ],

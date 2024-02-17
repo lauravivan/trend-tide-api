@@ -1,5 +1,6 @@
 import HttpError from "../model/http-error.js";
 import Post from "../model/post.js";
+import User from "../model/user.js";
 
 const newPost = async (req, res, next) => {
   if (
@@ -12,8 +13,14 @@ const newPost = async (req, res, next) => {
       const post = new Post(req.body);
       const postCreated = await post.save();
 
+      await User.findByIdAndUpdate(req.body.author, {
+        $push: {
+          posts: post._id,
+        },
+      });
+
       if (postCreated) {
-        res.status(201).json({
+        return res.status(201).json({
           message: "Your post has been published!",
         });
       }
@@ -87,7 +94,8 @@ const getPosts = async (req, res, next) => {
   try {
     const posts = await Post.find().populate({
       path: "author",
-      select: "_id username",
+      select: "_id username favoritePosts",
+      populate: { path: "favoritePosts", select: "_id" },
     });
 
     if (posts.length > 0) {

@@ -175,9 +175,80 @@ const recoverPass = async (req, res, next) => {
   }
 };
 
-const getPosts = async () => {};
+const getPosts = async (req, res, next) => {
+  const uid = req.params.uid;
 
-const getFavoritePosts = async () => {};
+  try {
+    const userPosts = await User.findById(uid, "_id posts").populate("posts");
+
+    if (userPosts) {
+      return res.status(201).json(userPosts);
+    } else {
+      return res.status(404).json();
+    }
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const addFavoritePost = async (req, res, next) => {
+  const uid = req.params.uid;
+  const pid = req.params.pid;
+
+  try {
+    const user = await User.findByIdAndUpdate(uid, {
+      $addToSet: {
+        favoritePosts: pid,
+      },
+    });
+
+    return res.status(201).json({
+      uid: user._id,
+      favoritePosts: user.favoritePosts,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getFavoritePosts = async (req, res, next) => {
+  const uid = req.params.uid;
+
+  try {
+    const favoritePosts = await User.findById(
+      uid,
+      "_id favoritePosts"
+    ).populate("favoritePosts");
+
+    if (favoritePosts) {
+      return res.status(201).json(favoritePosts);
+    } else {
+      return res.status(401).json();
+    }
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const removeFavoritePost = async (req, res, next) => {
+  const uid = req.params.uid;
+  const pid = req.params.pid;
+
+  try {
+    const user = await User.findByIdAndUpdate(uid, {
+      $pull: {
+        favoritePosts: pid,
+      },
+    });
+
+    return res.status(201).json({
+      uid: user._id,
+      favoritePosts: user.favoritePosts,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
 
 const updateAccount = async (req, res, next) => {
   const dataReceived = {};
@@ -284,7 +355,9 @@ export {
   signup,
   recoverPass,
   getPosts,
+  addFavoritePost,
   getFavoritePosts,
+  removeFavoritePost,
   updateAccount,
   deleteProfileImage,
   getAccountInfo,
