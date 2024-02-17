@@ -4,6 +4,7 @@ import HttpError from "../model/http-error.js";
 import getToken from "../util/token.js";
 import fs from "fs";
 import path from "path";
+import Post from "../model/post.js";
 
 const signup = async (req, res, next) => {
   let dataReceived;
@@ -202,6 +203,12 @@ const addFavoritePost = async (req, res, next) => {
       },
     });
 
+    await Post.findByIdAndUpdate(pid, {
+      $addToSet: {
+        usersWhoLiked: uid,
+      },
+    });
+
     return res.status(201).json({
       uid: user._id,
       favoritePosts: user.favoritePosts,
@@ -238,6 +245,12 @@ const removeFavoritePost = async (req, res, next) => {
     const user = await User.findByIdAndUpdate(uid, {
       $pull: {
         favoritePosts: pid,
+      },
+    });
+
+    await Post.findByIdAndUpdate(pid, {
+      $pull: {
+        usersWhoLiked: uid,
       },
     });
 
