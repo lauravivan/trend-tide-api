@@ -112,11 +112,41 @@ const getPostsByUser = async (req, res, next) => {
   const uid = req.params.uid;
 
   try {
-    const posts = await Post.where({ author: uid });
+    const posts = await Post.where({ author: uid }).populate({
+      path: "author",
+      select: "_id username favoritePosts",
+      populate: { path: "favoritePosts", select: "_id" },
+    });
 
-    if (posts) {
-      res.status(201).json({
-        posts: posts,
+    if (posts.length > 0) {
+      return res.status(201).json(posts);
+    } else {
+      return res.status(404).json({
+        message:
+          "No posts have been published yet! Publish your first post by going on *Create new Post*",
+      });
+    }
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getFavoritePostsByUser = async (req, res, next) => {
+  const uid = req.params.uid;
+
+  try {
+    const posts = await Post.where({ usersWhoLiked: uid }).populate({
+      path: "author",
+      select: "_id username favoritePosts",
+      populate: { path: "favoritePosts", select: "_id" },
+    });
+
+    if (posts.length > 0) {
+      return res.status(201).json(posts);
+    } else {
+      return res.status(404).json({
+        message:
+          "You have no favorite posts yet. To favorite a post click on the heart icon on the post you wish to favorite.",
       });
     }
   } catch (error) {
@@ -141,4 +171,12 @@ const getPost = async (req, res, next) => {
   }
 };
 
-export { newPost, deletePost, updatePost, getPosts, getPostsByUser, getPost };
+export {
+  newPost,
+  deletePost,
+  updatePost,
+  getPosts,
+  getPostsByUser,
+  getPost,
+  getFavoritePostsByUser,
+};

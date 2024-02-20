@@ -7,6 +7,7 @@ import {
   getPosts,
   getPostsByUser,
   getPost,
+  getFavoritePostsByUser,
 } from "../controllers/post.js";
 
 const postRouter = express.Router();
@@ -21,5 +22,6 @@ postRouter.patch(
 postRouter.get("/posts", getPosts);
 postRouter.get("/posts/:uid", getPostsByUser);
 postRouter.get("/:pid", getPost);
+postRouter.get("/favorite-posts/:uid", getFavoritePostsByUser);
 
 export default postRouter;
