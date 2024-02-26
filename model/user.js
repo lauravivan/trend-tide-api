@@ -34,7 +34,7 @@ const userSchema = new Schema({
     required: true,
   },
   profileImage: {
-    type: String,
+    type: Object,
     default: "",
   },
   posts: [

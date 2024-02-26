@@ -7,6 +7,8 @@ const MIME_TYPE_MAP = {
   "image/png": "png",
   "image/jpg": "jpg",
   "image/jpeg": "jpeg",
+  "image/gif": "gif",
+  "image/svg+xml": "svg",
 };
 
 const authMiddleware = (req, res, next) => {
@@ -31,7 +33,9 @@ const authMiddleware = (req, res, next) => {
 };
 
 const fileUploadMiddleware = multer({
-  limits: 500000,
+  limits: {
+    fileSize: 2632772,
+  },
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
       cb(null, "uploads/images");

@@ -5,6 +5,9 @@ import getToken from "../util/token.js";
 import fs from "fs";
 import path from "path";
 import Post from "../model/post.js";
+import imageKit from "../util/image-kit.js";
+
+const fsPromises = fs.promises;
 
 const signup = async (req, res, next) => {
   let dataReceived;
@@ -228,8 +231,57 @@ const removeFavoritePost = async (req, res, next) => {
   }
 };
 
+const getFavoritePosts = async (req, res, next) => {
+  const uid = req.params.uid;
+
+  try {
+    const user = await User.findById(uid).populate({
+      path: "favoritePosts",
+    });
+
+    if (user.favoritePosts.length > 0) {
+      return res.status(201).json(user.favoritePosts);
+    } else {
+      return res.status(404).json({
+        message:
+          "You have no favorite posts yet. To favorite a post click on the heart icon on the post you wish to favorite.",
+      });
+    }
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const updateAccount = async (req, res, next) => {
   const dataReceived = {};
+  const uid = req.params.uid;
+
+  try {
+    if (req.file) {
+      const fileBuffer = await fsPromises.readFile(req.file.path);
+
+      const user = await User.findById(uid);
+
+      if (user.profileImage) {
+        const deleteRes = await imageKit.deleteFile(user.profileImage.fileId);
+        console.log(deleteRes);
+      }
+
+      const uploadRes = await imageKit.upload({
+        file: fileBuffer,
+        fileName: req.file.filename,
+        folder: "/trend-tide/profile-image/",
+      });
+
+      dataReceived["profileImage"] = uploadRes;
+
+      fs.unlink(path.join("uploads", "images", req.file.filename), (error) =>
+        console.log(error)
+      );
+    }
+  } catch (error) {
+    return next(error);
+  }
 
   if ("email" in req.body) {
     dataReceived["email"] = req.body.email;
@@ -243,22 +295,17 @@ const updateAccount = async (req, res, next) => {
     dataReceived["password"] = req.body.password;
   }
 
-  if ("image" in req.body) {
-    dataReceived["profileImage"] = req.body.image;
-  }
-
   try {
-    const userUpdated = await User.findOneAndUpdate(
-      { _id: req.params.uid },
-      dataReceived
-    );
+    const userUpdated = await User.findOneAndUpdate({ _id: uid }, dataReceived);
 
     if (userUpdated._id) {
-      res.status(201).json({
+      return res.status(201).json({
         message: "User sucessfully updated!",
       });
     } else {
-      res.status(409).json();
+      return res.status(409).json({
+        message: "Failed to update user",
+      });
     }
   } catch (error) {
     return next(error.message);
@@ -269,14 +316,13 @@ const deleteProfileImage = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.uid);
 
-    if (user) {
-      fs.unlink(path.join("uploads", "images", user.profileImage), (error) =>
-        console.log(error)
-      );
-    }
+    const deleteRes = await imageKit.deleteFile(user.profileImage.fileId);
+    console.log(deleteRes);
 
-    const updatedProfile = await User.findByIdAndUpdate(req.body.uid, {
-      profileImage: "",
+    const updatedProfile = await User.findByIdAndUpdate(req.params.uid, {
+      $unset: {
+        profileImage: "",
+      },
     });
 
     if (updatedProfile) {
@@ -304,7 +350,7 @@ const getAccountInfo = async (req, res, next) => {
     if (user) {
       return res.status(201).json(user);
     } else {
-      return res.status(404).json();
+      return res.status(404).json({ message: "No user found" });
     }
   } catch (error) {
     return next(error);
@@ -338,4 +384,5 @@ export {
   deleteProfileImage,
   getAccountInfo,
   deleteAccount,
+  getFavoritePosts,
 };

@@ -1,8 +1,15 @@
 import HttpError from "../model/http-error.js";
 import Post from "../model/post.js";
 import User from "../model/user.js";
+import fs from "fs";
+import imageKit from "../util/image-kit.js";
+import path from "path";
+
+const fsPromises = fs.promises;
 
 const newPost = async (req, res, next) => {
+  const dataReceived = {};
+
   if (
     "title" in req.body &&
     "content" in req.body &&
@@ -10,10 +17,32 @@ const newPost = async (req, res, next) => {
     "creationDate" in req.body
   ) {
     try {
-      const post = new Post(req.body);
+      if (req.file) {
+        console.log(req.file);
+        const fileBuffer = await fsPromises.readFile(req.file.path);
+
+        const uploadRes = await imageKit.upload({
+          file: fileBuffer,
+          fileName: req.file.filename,
+          folder: "/trend-tide/post/",
+        });
+
+        dataReceived["image"] = uploadRes;
+
+        fs.unlink(path.join("uploads", "images", req.file.filename), (error) =>
+          console.log(error)
+        );
+      }
+
+      dataReceived["title"] = req.body.title;
+      dataReceived["content"] = req.body.content;
+      dataReceived["author"] = req.body.author;
+      dataReceived["creationDate"] = req.body.creationDate;
+
+      const post = new Post(dataReceived);
       const postCreated = await post.save();
 
-      await User.findByIdAndUpdate(req.body.author, {
+      await User.findByIdAndUpdate(dataReceived.author, {
         $push: {
           posts: post._id,
         },
@@ -131,29 +160,6 @@ const getPostsByUser = async (req, res, next) => {
   }
 };
 
-const getFavoritePostsByUser = async (req, res, next) => {
-  const uid = req.params.uid;
-
-  try {
-    const posts = await Post.where({ usersWhoLiked: uid }).populate({
-      path: "author",
-      select: "_id username favoritePosts",
-      populate: { path: "favoritePosts", select: "_id" },
-    });
-
-    if (posts.length > 0) {
-      return res.status(201).json(posts);
-    } else {
-      return res.status(404).json({
-        message:
-          "You have no favorite posts yet. To favorite a post click on the heart icon on the post you wish to favorite.",
-      });
-    }
-  } catch (error) {
-    return next(error);
-  }
-};
-
 const getPost = async (req, res, next) => {
   const pid = req.params.pid;
 
@@ -171,12 +177,4 @@ const getPost = async (req, res, next) => {
   }
 };
 
-export {
-  newPost,
-  deletePost,
-  updatePost,
-  getPosts,
-  getPostsByUser,
-  getPost,
-  getFavoritePostsByUser,
-};
+export { newPost, deletePost, updatePost, getPosts, getPostsByUser, getPost };

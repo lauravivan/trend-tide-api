@@ -9,6 +9,7 @@ import {
   getAccountInfo,
   deleteAccount,
   removeFavoritePost,
+  getFavoritePosts,
 } from "../controllers/user.js";
 import { fileUploadMiddleware } from "../middleware/middleware.js";
 
@@ -19,6 +20,7 @@ userRouter.post("/signin", signin);
 userRouter.patch("/recover-pass", recoverPass);
 userRouter.patch("/add-favorite-post/:uid/:pid", addFavoritePost);
 userRouter.patch("/remove-favorite-post/:uid/:pid", removeFavoritePost);
+userRouter.get("/favorite-posts/:uid", getFavoritePosts);
 userRouter.patch(
   "/account-update/:uid",
   fileUploadMiddleware.single("image"),
