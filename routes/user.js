@@ -41,10 +41,10 @@ userRouter.patch("/remove-favorite-post/:uid/:pid", removeFavoritePost);
 userRouter.get("/favorite-posts/:uid", getFavoritePosts);
 userRouter.patch(
   "/account-update/:uid",
+  fileUploadMiddleware.single("image"),
   validateData,
   verifyDuplicity,
   verifyPasswordEquality,
-  fileUploadMiddleware.single("image"),
   updateAccount
 );
 userRouter.delete("/delete-profile-pic/:uid", deleteProfileImage);

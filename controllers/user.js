@@ -183,8 +183,12 @@ const updateAccount = async (req, res, next) => {
     dataReceived["password"] = await bcrypt.hash(req.body.password, 12);
   }
 
-  try {
-    if (req.file) {
+  if (req.file) {
+    try {
+      fs.unlink(path.join("uploads", "images", req.file.filename), (error) =>
+        console.log(error)
+      );
+
       const fileBuffer = await fsPromises.readFile(req.file.path);
 
       const user = await User.findById(uid);
@@ -194,20 +198,20 @@ const updateAccount = async (req, res, next) => {
         console.log(deleteRes);
       }
 
-      const uploadRes = await imageKit.upload({
-        file: fileBuffer,
-        fileName: req.file.filename,
-        folder: "/trend-tide/profile-image/",
-      });
+      if (fileBuffer) {
+        const uploadRes = await imageKit.upload({
+          file: fileBuffer,
+          fileName: req.file.filename,
+          folder: "/trend-tide/profile-image/",
+        });
 
-      dataReceived["profileImage"] = uploadRes;
-
-      fs.unlink(path.join("uploads", "images", req.file.filename), (error) =>
-        console.log(error)
-      );
+        if (uploadRes) {
+          dataReceived["profileImage"] = uploadRes;
+        }
+      }
+    } catch (error) {
+      console.log(error);
     }
-  } catch (error) {
-    return next(error);
   }
 
   try {

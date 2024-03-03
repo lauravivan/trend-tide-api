@@ -9,7 +9,8 @@ const validateData = (req, res, next) => {
       const error = new HttpError(
         `Must have at least 5 characters and 3 non-capital letters. ${
           username ? `${username} is not a valid username.` : ""
-        } `
+        }`,
+        409
       );
       return next(error);
     }
@@ -22,7 +23,8 @@ const validateData = (req, res, next) => {
       const error = new HttpError(
         `Example: bear@example.com. ${
           email ? `${email} is not a valid email.` : ""
-        }`
+        }`,
+        409
       );
       return next(error);
     }
@@ -33,9 +35,8 @@ const validateData = (req, res, next) => {
 
     if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W).{9,40}$/.test(password)) {
       const error = new HttpError(
-        `Must have at least one symbol, one capital letter, one non-capital letter and one digit. ${
-          password ? `${password} is not a valid password.` : ""
-        }`
+        "Must have at least one symbol, one capital letter, one non-capital letter and one digit.",
+        409
       );
       return next(error);
     }
