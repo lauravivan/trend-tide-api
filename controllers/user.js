@@ -6,6 +6,11 @@ import fs from "fs";
 import path from "path";
 import Post from "../model/post.js";
 import imageKit from "../util/image-kit.js";
+import {
+  deleteFile,
+  deleteFileFromImageKit,
+  uploadImageToImageKit,
+} from "../util/file.js";
 
 const fsPromises = fs.promises;
 
@@ -185,29 +190,23 @@ const updateAccount = async (req, res, next) => {
 
   if (req.file) {
     try {
-      fs.unlink(path.join("uploads", "images", req.file.filename), (error) =>
-        console.log(error)
-      );
-
-      const fileBuffer = await fsPromises.readFile(req.file.path);
-
       const user = await User.findById(uid);
 
       if (user.profileImage) {
-        const deleteRes = await imageKit.deleteFile(user.profileImage.fileId);
-        console.log(deleteRes);
+        deleteFileFromImageKit(
+          user.profileImage.name,
+          user.profileImage.fileId
+        );
       }
 
-      if (fileBuffer) {
-        const uploadRes = await imageKit.upload({
-          file: fileBuffer,
-          fileName: req.file.filename,
-          folder: "/trend-tide/profile-image/",
-        });
+      const uploadRes = await uploadImageToImageKit(
+        req.file,
+        "/trend-tide/profile-image/"
+      );
 
-        if (uploadRes) {
-          dataReceived["profileImage"] = uploadRes;
-        }
+      if (uploadRes) {
+        await deleteFile(req.file);
+        dataReceived["profileImage"] = uploadRes;
       }
     } catch (error) {
       console.log(error);
@@ -222,12 +221,11 @@ const updateAccount = async (req, res, next) => {
         message: "User sucessfully updated!",
       });
     } else {
-      return res.status(409).json({
-        message: "Failed to update user",
-      });
+      const error = new HttpError("Failed to update user", 409);
+      return next(error);
     }
   } catch (error) {
-    return next(error.message);
+    console.log(error);
   }
 };
 
