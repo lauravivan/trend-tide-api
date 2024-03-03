@@ -12,17 +12,38 @@ import {
   getFavoritePosts,
 } from "../controllers/user.js";
 import { fileUploadMiddleware } from "../middleware/middleware.js";
+import {
+  validateData,
+  verifyDuplicity,
+  verifyPasswordEquality,
+  verifyUserByEmail,
+} from "../middleware/validator.js";
 
 const userRouter = express.Router();
 
-userRouter.post("/signup", signup);
-userRouter.post("/signin", signin);
-userRouter.patch("/recover-pass", recoverPass);
+userRouter.post(
+  "/signup",
+  validateData,
+  verifyPasswordEquality,
+  verifyDuplicity,
+  signup
+);
+userRouter.post("/signin", validateData, verifyUserByEmail, signin);
+userRouter.patch(
+  "/recover-pass",
+  validateData,
+  verifyUserByEmail,
+  verifyPasswordEquality,
+  recoverPass
+);
 userRouter.patch("/add-favorite-post/:uid/:pid", addFavoritePost);
 userRouter.patch("/remove-favorite-post/:uid/:pid", removeFavoritePost);
 userRouter.get("/favorite-posts/:uid", getFavoritePosts);
 userRouter.patch(
   "/account-update/:uid",
+  validateData,
+  verifyDuplicity,
+  verifyPasswordEquality,
   fileUploadMiddleware.single("image"),
   updateAccount
 );
