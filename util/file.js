@@ -4,42 +4,43 @@ import imageKit from "../util/image-kit.js";
 
 const fsPromises = fs.promises;
 
-const deleteFile = async (file) => {
-  const filePath = path.join("uploads", "images", file.filename);
+const deleteFile = async (filename) => {
+  const filePath = path.join("uploads", "images", filename);
 
-  try {
-    await fsPromises.access(filePath, fs.constants.F_OK);
-
-    await fsPromises.unlink(filePath);
-
-    return "File deleted succesfully from images folder";
-  } catch (error) {
-    throw new Error(error);
+  if (fs.existsSync(filePath)) {
+    fs.unlink(filePath, (err) => {
+      if (err) throw err;
+      console.log("File deleted successfully");
+    });
+  } else {
+    return "File does not exist or have already been deleted";
   }
 };
 
-const deleteFileFromImageKit = async (fileName, fileId) => {
+const deleteFileFromImageKit = async (filename, fileId) => {
   try {
     const res = await imageKit.listFiles({
-      searchQuery: `name="${fileName}"`,
+      searchQuery: `name="${filename}"`,
     });
 
-    if (res) {
+    if (res.length > 0) {
       await imageKit.deleteFile(fileId);
     }
+
+    return "File deleted successfully";
   } catch (error) {
     throw new Error(error);
   }
 };
 
-const uploadImageToImageKit = async (file, imageKitFolder) => {
+const uploadImageToImageKit = async (filepath, filename, imageKitFolder) => {
   try {
-    const fileBuffer = await fsPromises.readFile(file.path);
+    const fileBuffer = await fsPromises.readFile(filepath);
 
     if (fileBuffer) {
       const uploadRes = imageKit.upload({
         file: fileBuffer,
-        fileName: file.filename,
+        fileName: filename,
         folder: imageKitFolder,
       });
 
