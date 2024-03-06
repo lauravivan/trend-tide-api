@@ -189,23 +189,25 @@ const updateAccount = async (req, res, next) => {
   }
 
   if (req.file) {
+    console.log(req.file);
     try {
       const user = await User.findById(uid);
 
       if (user.profileImage) {
-        deleteFileFromImageKit(
+        await deleteFileFromImageKit(
           user.profileImage.name,
           user.profileImage.fileId
         );
       }
 
       const uploadRes = await uploadImageToImageKit(
-        req.file,
+        req.file.path,
+        req.file.filename,
         "/trend-tide/profile-image/"
       );
 
       if (uploadRes) {
-        await deleteFile(req.file);
+        await deleteFile(req.file.filename);
         dataReceived["profileImage"] = uploadRes;
       }
     } catch (error) {
