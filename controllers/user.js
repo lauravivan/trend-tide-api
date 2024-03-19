@@ -235,8 +235,7 @@ const deleteProfileImage = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.uid);
 
-    const deleteRes = await imageKit.deleteFile(user.profileImage.fileId);
-    console.log(deleteRes);
+    await imageKit.deleteFile(user.profileImage.fileId);
 
     const updatedProfile = await User.findByIdAndUpdate(req.params.uid, {
       $unset: {
